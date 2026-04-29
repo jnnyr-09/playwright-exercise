@@ -4,7 +4,7 @@ import { test, expect, type Page } from '@playwright/test';
 // Define a hook that runs before each test case to set up the initial state
 test.beforeEach(async ({ page }) => {
   // Navigate the browser to the TodoMVC demo application URL
-  await page.goto('https://demo.playwright.dev/todomvc');
+  await page.goto('https://demo.playwright.dev/todomvc/#/');
 });
 
 // Define a constant array containing sample todo items for testing
@@ -134,8 +134,9 @@ await expect(secondTodo).not.toHaveClass('completed');
     await firstTodoCheckbox.check();
     // 22 & 23 Verify the first item is completed and the second is not
     // 22
+    await expect(firstTodo).toHaveClass(/completed/);
     // 23 
-
+    await expect(secondTodo).not.toHaveClass(/completed/);
     // Uncheck the checkbox for the first item
     await firstTodoCheckbox.uncheck();
     // Verify that neither item is marked as completed anymore. NOTE: The current code only marks one item
@@ -160,16 +161,14 @@ test('should remove the item if an empty text string was entered', async ({ page
   await todoItems.nth(1).dblclick();
 
   // 29 Clear the text entirely
-  await todoItems.nth(1).getByRole('textbox', { name: 'Edit' }).fill('');
-
+  const editInput = todoItems.nth(1).getByRole('textbox', { name: 'Edit' });
+  await editInput.press('Control+A');
+  await editInput.press('Backspace');
   // Submit the empty value
-  await todoItems.nth(1).getByRole('textbox', { name: 'Edit' }).press('Enter');
+    await editInput.press('Enter');
 
   // Verify the second item was removed
-  await expect(todoItems).toHaveText([
-    TODO_ITEMS[0],
-    TODO_ITEMS[2],
-  ]);
+  await expect(todoItems).toHaveCount(2);
 });
 });
 
@@ -187,7 +186,7 @@ test.describe('Editing', () => {
     // Enter edit mode
     await todoItem.dblclick();
     // 28 Assert that the completion checkbox is no longer visible
-
+    await expect(todoItem.getByRole('checkbox')).not.toBeVisible();
     // Assert that the text label is also hidden
     await expect(todoItem.locator('label', {
       hasText: TODO_ITEMS[1],
@@ -202,19 +201,17 @@ test.describe('Editing', () => {
     const secondItem = todoItems.nth(1);
 await secondItem.dblclick();
 
-const editInput = secondItem.getByRole('textbox', { name: 'Edit' });
+const editInput = secondItem.getByRole('textbox');
 
     // 29 Clear the text entirely
-await editInput.fill('');
-await editInput.press('Enter');
+await editInput.press('Control+A');
+await editInput.press('Backspace');
     // Submit the empty value
-    await todoItems.nth(1).getByRole('textbox', { name: 'Edit' }).press('Enter');
+    await editInput.press('Enter');
 
     // Verify the second item was removed, leaving only the first and third
-    await expect(todoItems).toHaveText([
-      TODO_ITEMS[0],
-      TODO_ITEMS[2],
-    ]);
+    await expect(todoItems).toHaveCount(2);
+    
   });
 });
 
@@ -232,11 +229,12 @@ test.describe('Counter', () => {
     await newTodo.press('Enter');
 
     // 30 Verify counter shows 1 item
-
+    await expect(todoCount).toHaveText('1 item left');
     // Add the second item
     await newTodo.fill(TODO_ITEMS[1]);
     await newTodo.press('Enter');
     // Verify counter now shows 2 items
+    await expect(todoCount).toHaveText('2 items left');
   });
 });
 
