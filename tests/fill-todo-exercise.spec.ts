@@ -1,19 +1,6 @@
 // Import the test runner, assertion library, and Page type from the Playwright test package
 import { test, expect, type Page } from '@playwright/test';
 
-// Define a hook that runs before each test case to set up the initial state
-test.beforeEach(async ({ page }) => {
-  // Navigate the browser to the TodoMVC demo application URL
-  await page.goto('https://demo.playwright.dev/todomvc');
-});
-
-// Define a constant array containing sample todo items for testing
-const TODO_ITEMS = [
-  'buy some cheese',
-  'feed the cat',
-  'book a doctors appointment'
-];
-
 // Group a set of tests related to creating "New Todo" items
 test.describe('New Todo', () => {
   // Define a test case to verify that multiple todo items can be added
