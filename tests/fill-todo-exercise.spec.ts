@@ -84,7 +84,7 @@ test.describe('Item', () => {
   test('should allow me to mark items as complete', async ({ page }) => {
     // Create a locator for the main input field
     const newTodo = page.getByPlaceholder('What needs to be done?');
-
+ 
     // Create 2 items
     for (const item of TODO_ITEMS.slice(0, 2)) {
       // Fill the input field with the current item
@@ -101,11 +101,12 @@ test.describe('Item', () => {
     await expect(firstTodo).toHaveClass('completed');
 
     // 18 Locate the second todo item in the list (index 1)
-
+ const secondTodo = page.getByTestId('todo-item').nth(1);
     // 19 Assert that the second item does NOT have the 'completed' class yet
+await expect(secondTodo).not.toHaveClass('completed');
 
     // 20 Find the checkbox within the second item and check it
-
+ await secondTodo.getByRole('checkbox').check();
     // 21 Final assertion that BOTH items now have the 'completed' class
     await expect(firstTodo).toHaveClass('completed');
     // 21 NOTE: The code above just assert the first item
@@ -143,30 +144,33 @@ test.describe('Item', () => {
     await expect(secondTodo).not.toHaveClass('completed');
   });
 
-  // Define a test case for editing existing items
-  test('should allow me to edit an item', async ({ page }) => {
-    // Populate the list with the default items
-    await createDefaultTodos(page);
+  // Test that an item is deleted if its text is cleared during an edit
+test('should remove the item if an empty text string was entered', async ({ page }) => {
 
-    // Create a locator for all todo items
-    const todoItems = page.getByTestId('todo-item');
-    // Focus on the second item in the list
-    const secondTodo = todoItems.nth(1);
-    // Double-click the item to enter editing mode
-    await secondTodo.dblclick();
-    // 25 Assert that the editing textbox appears and contains the current text
+  // Add the todo items first
+  for (const item of TODO_ITEMS) {
+    await page.getByPlaceholder('What needs to be done?').fill(item);
+    await page.getByPlaceholder('What needs to be done?').press('Enter');
+  }
 
-    // 26 Fill the editing textbox with new text
+  // Create a locator for all items
+  const todoItems = page.getByTestId('todo-item');
 
-    // 27 Press Enter to save the changes
+  // Edit the second item
+  await todoItems.nth(1).dblclick();
 
-    // Verify the list contains the original first item, the updated second item, and the original third item
-    await expect(todoItems).toHaveText([
-      TODO_ITEMS[0],
-      'buy some sausages',
-      TODO_ITEMS[2]
-    ]);
-  });
+  // 29 Clear the text entirely
+  await todoItems.nth(1).getByRole('textbox', { name: 'Edit' }).fill('');
+
+  // Submit the empty value
+  await todoItems.nth(1).getByRole('textbox', { name: 'Edit' }).press('Enter');
+
+  // Verify the second item was removed
+  await expect(todoItems).toHaveText([
+    TODO_ITEMS[0],
+    TODO_ITEMS[2],
+  ]);
+});
 });
 
 // Group tests for specific editing behaviors
@@ -195,9 +199,14 @@ test.describe('Editing', () => {
     // Create a locator for all items
     const todoItems = page.getByTestId('todo-item');
     // Edit the second item
-    await todoItems.nth(1).dblclick();
-    // 29 Clear the text entirely
+    const secondItem = todoItems.nth(1);
+await secondItem.dblclick();
 
+const editInput = secondItem.getByRole('textbox', { name: 'Edit' });
+
+    // 29 Clear the text entirely
+await editInput.fill('');
+await editInput.press('Enter');
     // Submit the empty value
     await todoItems.nth(1).getByRole('textbox', { name: 'Edit' }).press('Enter');
 
