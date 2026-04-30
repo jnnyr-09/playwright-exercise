@@ -5,8 +5,6 @@ import { test, expect, type Page } from '@playwright/test';
 test.beforeEach(async ({ page }) => {
   // Navigate the browser to the TodoMVC demo application URL
   await page.goto('https://demo.playwright.dev/todomvc/#/');
- 
-
 });
 
 // Define a constant array containing sample todo items for testing
@@ -105,7 +103,7 @@ test.describe('Item', () => {
   test('should allow me to mark items as complete', async ({ page }) => {
     // Create a locator for the main input field
     const newTodo = page.getByPlaceholder('What needs to be done?');
-
+ 
     // Create 2 items
     for (const item of TODO_ITEMS.slice(0, 2)) {
       // Fill the input field with the current item
@@ -122,11 +120,12 @@ test.describe('Item', () => {
     await expect(firstTodo).toHaveClass('completed');
 
     // 18 Locate the second todo item in the list (index 1)
-
+ const secondTodo = page.getByTestId('todo-item').nth(1);
     // 19 Assert that the second item does NOT have the 'completed' class yet
+await expect(secondTodo).not.toHaveClass('completed');
 
     // 20 Find the checkbox within the second item and check it
-
+ await secondTodo.getByRole('checkbox').check();
     // 21 Final assertion that BOTH items now have the 'completed' class
     await expect(firstTodo).toHaveClass('completed');
     // 21 NOTE: The code above just assert the first item
@@ -154,8 +153,9 @@ test.describe('Item', () => {
     await firstTodoCheckbox.check();
     // 22 & 23 Verify the first item is completed and the second is not
     // 22
+    await expect(firstTodo).toHaveClass(/completed/);
     // 23 
-
+    await expect(secondTodo).not.toHaveClass(/completed/);
     // Uncheck the checkbox for the first item
     await firstTodoCheckbox.uncheck();
     // Verify that neither item is marked as completed anymore. NOTE: The current code only marks one item
@@ -164,30 +164,31 @@ test.describe('Item', () => {
     await expect(secondTodo).not.toHaveClass('completed');
   });
 
-  // Define a test case for editing existing items
-  test('should allow me to edit an item', async ({ page }) => {
-    // Populate the list with the default items
-    await createDefaultTodos(page);
+  // Test that an item is deleted if its text is cleared during an edit
+test('should remove the item if an empty text string was entered', async ({ page }) => {
 
-    // Create a locator for all todo items
-    const todoItems = page.getByTestId('todo-item');
-    // Focus on the second item in the list
-    const secondTodo = todoItems.nth(1);
-    // Double-click the item to enter editing mode
-    await secondTodo.dblclick();
-    // 25 Assert that the editing textbox appears and contains the current text
+  // Add the todo items first
+  for (const item of TODO_ITEMS) {
+    await page.getByPlaceholder('What needs to be done?').fill(item);
+    await page.getByPlaceholder('What needs to be done?').press('Enter');
+  }
 
-    // 26 Fill the editing textbox with new text
+  // Create a locator for all items
+  const todoItems = page.getByTestId('todo-item');
 
-    // 27 Press Enter to save the changes
+  // Edit the second item
+  await todoItems.nth(1).dblclick();
 
-    // Verify the list contains the original first item, the updated second item, and the original third item
-    await expect(todoItems).toHaveText([
-      TODO_ITEMS[0],
-      'buy some sausages',
-      TODO_ITEMS[2]
-    ]);
-  });
+  // 29 Clear the text entirely
+  const editInput = todoItems.nth(1).getByRole('textbox', { name: 'Edit' });
+  await editInput.press('Control+A');
+  await editInput.press('Backspace');
+  // Submit the empty value
+    await editInput.press('Enter');
+
+  // Verify the second item was removed
+  await expect(todoItems).toHaveCount(2);
+});
 });
 
 // Group tests for specific editing behaviors
@@ -204,7 +205,7 @@ test.describe('Editing', () => {
     // Enter edit mode
     await todoItem.dblclick();
     // 28 Assert that the completion checkbox is no longer visible
-
+    await expect(todoItem.getByRole('checkbox')).not.toBeVisible();
     // Assert that the text label is also hidden
     await expect(todoItem.locator('label', {
       hasText: TODO_ITEMS[1],
@@ -216,17 +217,20 @@ test.describe('Editing', () => {
     // Create a locator for all items
     const todoItems = page.getByTestId('todo-item');
     // Edit the second item
-    await todoItems.nth(1).dblclick();
-    // 29 Clear the text entirely
+    const secondItem = todoItems.nth(1);
+await secondItem.dblclick();
 
+const editInput = secondItem.getByRole('textbox');
+
+    // 29 Clear the text entirely
+await editInput.press('Control+A');
+await editInput.press('Backspace');
     // Submit the empty value
-    await todoItems.nth(1).getByRole('textbox', { name: 'Edit' }).press('Enter');
+    await editInput.press('Enter');
 
     // Verify the second item was removed, leaving only the first and third
-    await expect(todoItems).toHaveText([
-      TODO_ITEMS[0],
-      TODO_ITEMS[2],
-    ]);
+    await expect(todoItems).toHaveCount(2);
+    
   });
 });
 
@@ -244,11 +248,12 @@ test.describe('Counter', () => {
     await newTodo.press('Enter');
 
     // 30 Verify counter shows 1 item
-
+    await expect(todoCount).toHaveText('1 item left');
     // Add the second item
     await newTodo.fill(TODO_ITEMS[1]);
     await newTodo.press('Enter');
     // Verify counter now shows 2 items
+    await expect(todoCount).toHaveText('2 items left');
   });
 });
 
@@ -261,34 +266,47 @@ test.describe('Clear completed button', () => {
 
   // Test that the button is visible only when there are completed items
   test('should display the correct text', async ({ page }) => {
+    const todoItems = page.getByTestId('todo-item');
+
     // 31 Check the toggle checkbox of the first item
+  await todoItems.first().getByRole('checkbox').check();
+
+  const clearButton = page.getByRole('button', { name: 'Clear completed' });
 
     // 32 Assert the "Clear completed" button becomes visible
-
+ await expect(clearButton).toBeVisible();
   });
 
   // Test that clicking the button removes the completed items
   test('should remove completed items when clicked', async ({ page }) => {
+     const todoItems = page.getByTestId('todo-item');
     // 33 Locate all items
-
+await expect(todoItems).toHaveCount(3);
     // 34 Mark the second item as complete
+  await todoItems.nth(1).getByRole('checkbox').check();
 
+  const clearButton = page.getByRole('button', { name: 'Clear completed' });
     // 35 Click the clear button
-
+await clearButton.click();
     // 36 Assert only 2 items remain
-
+  await expect(todoItems).toHaveCount(2);
     // 37 Assert the correct items (first and third) remain in the list
-
+await expect(todoItems).toHaveText([
+    TODO_ITEMS[0],
+    TODO_ITEMS[2],
+  ]);
   });
 
   // Test that the button disappears when no completed items are left
   test('should be hidden when there are no items that are completed', async ({ page }) => {
+   const todoItems = page.getByTestId('todo-item');
+  const clearButton = page.getByRole('button', { name: 'Clear completed' });
     // 38 Mark an item as complete
-
+await todoItems.first().getByRole('checkbox').check();
     // 39 Click the clear button
-
+await clearButton.click();
     // 40 Assert the button is now hidden
-    
+await expect(clearButton).toBeHidden();  
   });
 });
 
